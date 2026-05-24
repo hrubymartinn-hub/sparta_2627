@@ -1,0 +1,2418 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HC Sparta — Komunikační koncept 26/27</title>
+<style>
+  /* ============== RESET & VARIABLES ============== */
+  :root {
+    --red: #EE2A5C;
+    --red-dark: #C8102E;
+    --black: #0A0A0A;
+    --ink: #1a1a1a;
+    --white: #FFFFFF;
+    --grey-90: #f4f4f4;
+    --grey-70: #b8b8b8;
+    --grey-50: #6b6b6b;
+    --grey-30: #2a2a2a;
+    --serif: 'EB Garamond', 'Iowan Old Style', Georgia, serif;
+    --sans: 'Barlow Condensed', 'Oswald', 'Arial Narrow', sans-serif;
+    --body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--body);
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  /* ============== NAVIGATION ============== */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .nav-brand {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-brand .heart {
+    color: var(--red);
+    font-size: 14px;
+    line-height: 0;
+    transform: translateY(1px);
+  }
+  .nav-progress {
+    font-family: var(--sans);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--grey-70);
+  }
+  .nav-progress .current { color: var(--white); font-weight: 700; }
+  .nav-toggle {
+    background: none; border: 1px solid rgba(255,255,255,0.2);
+    color: var(--white); padding: 7px 14px;
+    font-family: var(--sans); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-toggle:hover { background: var(--red); border-color: var(--red); }
+
+  /* ============== OVERVIEW PANEL ============== */
+  .overview {
+    position: fixed; inset: 0;
+    background: rgba(10,10,10,0.97);
+    backdrop-filter: blur(20px);
+    z-index: 999;
+    padding: 80px 40px 40px;
+    overflow-y: auto;
+    display: none;
+  }
+  .overview.open { display: block; }
+  .overview-title {
+    font-family: var(--sans);
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--grey-70);
+    margin-bottom: 24px;
+  }
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .overview-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .overview-item:hover {
+    background: rgba(238,42,92,0.1);
+    border-color: var(--red);
+    transform: translateY(-2px);
+  }
+  .overview-num {
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--red);
+    margin-bottom: 6px;
+  }
+  .overview-section {
+    font-family: var(--sans);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--grey-50);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .overview-name {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-style: italic;
+    line-height: 1.3;
+    color: var(--white);
+  }
+
+  /* ============== SLIDE FRAMEWORK ============== */
+  .slide {
+    min-height: 100vh;
+    padding: 100px 80px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .slide-tag {
+    position: absolute;
+    top: 80px; left: 80px;
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .slide-tag::before {
+    content: ''; width: 28px; height: 1px;
+    background: var(--red);
+  }
+  .slide-num {
+    position: absolute;
+    bottom: 40px; right: 80px;
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--grey-50);
+  }
+  .slide-num strong { color: var(--white); font-size: 14px; }
+
+  .slide h1 {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: clamp(48px, 5.5vw, 92px);
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  .slide h1 .heart {
+    color: var(--red);
+    display: inline-block;
+    transform: translateY(-0.08em);
+    font-size: 0.85em;
+  }
+  .slide h1 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .slide h2 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(28px, 3vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .slide h2 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    text-transform: none;
+    color: var(--red);
+  }
+  .slide h3 {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 12px;
+  }
+  .slide p {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--grey-70);
+    max-width: 720px;
+    margin-bottom: 16px;
+  }
+  .slide p strong { color: var(--white); font-weight: 600; }
+  .slide p.lead {
+    font-size: 22px;
+    line-height: 1.5;
+    color: var(--white);
+    font-weight: 400;
+  }
+
+  /* ============== SLIDE 1 — COVER ============== */
+  .slide.cover {
+    background: var(--black);
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-pattern {
+    position: absolute;
+    inset: 0;
+    opacity: 0.06;
+    background-image:
+      repeating-linear-gradient(33deg, transparent, transparent 80px,
+        var(--white) 80px, var(--white) 82px),
+      repeating-linear-gradient(-22deg, transparent, transparent 110px,
+        var(--white) 110px, var(--white) 111px);
+    pointer-events: none;
+  }
+  .cover-districts {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.18;
+  }
+  .cover-districts span {
+    position: absolute;
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: clamp(80px, 12vw, 180px);
+    color: var(--grey-30);
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .cover-districts span:nth-child(1) { top: 8%; left: -3%; transform: rotate(-8deg); }
+  .cover-districts span:nth-child(2) { top: 22%; right: -5%; transform: rotate(12deg); }
+  .cover-districts span:nth-child(3) { top: 45%; left: -8%; transform: rotate(-15deg); color: rgba(238,42,92,0.22); }
+  .cover-districts span:nth-child(4) { bottom: 18%; right: -6%; transform: rotate(8deg); }
+  .cover-districts span:nth-child(5) { bottom: 6%; left: 10%; transform: rotate(-5deg); }
+
+  .cover-content {
+    position: relative;
+    z-index: 2;
+  }
+  .cover-eyebrow {
+    font-family: var(--sans);
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 32px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .cover-eyebrow::before {
+    content: ''; width: 60px; height: 2px; background: var(--red);
+  }
+  .cover-title {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: clamp(64px, 10vw, 156px);
+    line-height: 0.88;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .cover-title .accent { color: var(--red); }
+  .cover-sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(22px, 2.3vw, 32px);
+    color: var(--grey-70);
+    max-width: 640px;
+    line-height: 1.35;
+    margin-bottom: 64px;
+  }
+  .cover-meta {
+    display: flex; gap: 64px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    padding-top: 24px;
+  }
+  .cover-meta div { }
+  .cover-meta dt {
+    font-family: var(--sans);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+    margin-bottom: 6px;
+  }
+  .cover-meta dd {
+    font-family: var(--sans);
+    font-size: 16px; font-weight: 600;
+    color: var(--white);
+  }
+
+  /* ============== SLIDE 2 — TOC / MAP ============== */
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 40px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .toc-section {
+    padding: 28px 24px 28px 0;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  .toc-section:last-child { border-right: none; }
+  .toc-section-num {
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+  .toc-section-title {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .toc-section-items {
+    list-style: none;
+  }
+  .toc-section-items li {
+    font-size: 14px;
+    color: var(--grey-70);
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.4;
+  }
+  .toc-section-items li:last-child { border-bottom: none; }
+
+  /* ============== SLIDE 3 — EXEC SUMMARY ============== */
+  .exec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin-top: 32px;
+    border-top: 1px solid var(--red);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .exec-col {
+    padding: 28px 32px 28px 0;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .exec-col:last-child { border-right: none; padding-right: 0; }
+  .exec-col h3 {
+    margin-bottom: 14px;
+  }
+  .exec-col p {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--grey-70);
+    margin-bottom: 12px;
+    max-width: none;
+  }
+  .exec-col p strong { color: var(--white); }
+  .exec-bottom {
+    margin-top: 32px;
+    padding: 24px 28px;
+    background: linear-gradient(90deg, rgba(238,42,92,0.12), rgba(238,42,92,0.03));
+    border-left: 3px solid var(--red);
+  }
+  .exec-bottom strong {
+    font-family: var(--sans);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .exec-bottom p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.4;
+    color: var(--white);
+    margin: 0;
+    max-width: 900px;
+  }
+
+  /* ============== SLIDE 4 — STATS ============== */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin: 48px 0 32px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .stat {
+    padding: 36px 32px 36px 0;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-label {
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+    margin-bottom: 12px;
+  }
+  .stat-num {
+    font-family: var(--sans);
+    font-size: clamp(48px, 5vw, 84px);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--white);
+    margin-bottom: 10px;
+  }
+  .stat-num .gap { color: var(--red); }
+  .stat-desc {
+    font-size: 14px;
+    color: var(--grey-70);
+    line-height: 1.4;
+  }
+
+  .source-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 32px;
+  }
+  .source-card {
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 24px 28px;
+    transition: all 0.2s;
+  }
+  .source-card h4 {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .source-card p {
+    font-size: 14px;
+    color: var(--grey-70);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ============== CITATION BLOCK ============== */
+  .citation {
+    border-left: 3px solid var(--red);
+    padding: 20px 28px;
+    margin: 24px 0;
+    background: rgba(255,255,255,0.025);
+    max-width: 880px;
+  }
+  .citation p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--white);
+    margin-bottom: 12px;
+  }
+  .citation p:last-child { margin-bottom: 0; }
+  .citation cite {
+    display: block;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+    font-style: normal;
+    margin-top: 12px;
+  }
+  .citation cite a {
+    color: var(--red);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border 0.15s;
+  }
+  .citation cite a:hover { border-bottom-color: var(--red); }
+
+  /* ============== MANIFESTO LAYOUT ============== */
+  .manifesto-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    margin-top: 28px;
+    align-items: start;
+  }
+  .manifesto-text {
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--white);
+  }
+  .manifesto-text p {
+    color: var(--white);
+    font-family: var(--serif);
+    margin-bottom: 14px;
+    font-size: 18px;
+    max-width: none;
+  }
+  .manifesto-text .signoff {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    margin-top: 24px;
+    color: var(--white);
+    line-height: 1.1;
+  }
+  .manifesto-text .signoff span { color: var(--red); }
+  .manifesto-side {
+    border-left: 1px solid rgba(255,255,255,0.1);
+    padding-left: 32px;
+  }
+  .manifesto-side h3 { margin-bottom: 20px; }
+  .manifesto-side p {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    max-width: none;
+  }
+
+  /* ============== TWO-COL CONTENT ============== */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    margin-top: 24px;
+    align-items: start;
+  }
+  .two-col p { max-width: none; }
+
+  /* ============== SLIDE 8 — VISUAL SYSTEM ============== */
+  .vs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 28px;
+    margin-top: 36px;
+  }
+  .vs-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 28px;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+  }
+  .vs-visual {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    background: var(--black);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding-bottom: 20px;
+  }
+  .vs-lockup {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: 32px;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .vs-lockup .heart {
+    color: var(--red);
+    font-size: 28px;
+    line-height: 0;
+  }
+  .vs-heart-only {
+    font-size: 70px;
+    color: var(--red);
+    line-height: 0;
+  }
+  .vs-pattern {
+    width: 100%;
+    height: 100%;
+    background:
+      linear-gradient(135deg, transparent 0%, transparent 30%, rgba(238,42,92,0.3) 50%, transparent 70%),
+      repeating-linear-gradient(33deg, transparent, transparent 14px, rgba(255,255,255,0.12) 14px, rgba(255,255,255,0.12) 15px);
+    position: relative;
+    overflow: hidden;
+  }
+  .vs-pattern::before {
+    content: 'HOLEŠOVICE  ŽIŽKOV  KARLÍN  LETNÁ';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+    line-height: 1.3;
+  }
+  .vs-label {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .vs-card h4 {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    margin-bottom: 8px;
+  }
+  .vs-card p {
+    font-size: 14px;
+    color: var(--grey-70);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .lockup-variants {
+    margin-top: 28px;
+    padding: 20px 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .lockup-variants h4 {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+    margin-bottom: 14px;
+  }
+  .lockup-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 36px;
+  }
+  .lockup-list span {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .lockup-list span .heart {
+    color: var(--red);
+    font-size: 16px;
+    line-height: 0;
+  }
+  .lockup-list span small {
+    font-weight: 400;
+    text-transform: lowercase;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    letter-spacing: 0;
+    color: var(--grey-70);
+  }
+
+  /* ============== SLIDE 9 — ROBBIE INTRO ============== */
+  .robbie-intro {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 64px;
+    margin-top: 24px;
+    align-items: start;
+  }
+  .robbie-quote-big {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(32px, 3vw, 44px);
+    line-height: 1.2;
+    color: var(--white);
+    margin-bottom: 28px;
+    text-indent: -0.4em;
+  }
+  .robbie-quote-big::before {
+    content: '\201C';
+    color: var(--red);
+    font-size: 1.2em;
+    line-height: 0;
+  }
+  .robbie-attribution {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+  }
+
+  /* ============== SLIDE 10 — PASSAGES VIDEO 1 ============== */
+  .passages {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+    margin-top: 28px;
+  }
+  .passage {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 3px solid var(--red);
+    padding: 24px 28px;
+  }
+  .passage-num {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 12px;
+  }
+  .passage-en {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--white);
+    margin-bottom: 12px;
+  }
+  .passage-cz {
+    font-size: 14px;
+    color: var(--grey-70);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .passage-take {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 14px;
+  }
+  .passage-take strong {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .passage-take p {
+    font-size: 14px;
+    color: var(--white);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .transcript-link {
+    margin-top: 28px;
+    padding: 16px 24px;
+    background: rgba(238,42,92,0.08);
+    border: 1px solid rgba(238,42,92,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-decoration: none;
+    color: var(--white);
+    transition: all 0.2s;
+  }
+  .transcript-link:hover {
+    background: rgba(238,42,92,0.15);
+    border-color: var(--red);
+  }
+  .transcript-link strong {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .transcript-link span {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--red);
+  }
+
+  /* ============== KEYBOARD NAVIGATION HINT ============== */
+  .key-hint {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--grey-50);
+    text-transform: uppercase;
+    z-index: 100;
+    opacity: 0.7;
+  }
+  .key-hint kbd {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 2px 7px;
+    margin: 0 3px;
+    font-family: inherit;
+    font-size: 10px;
+  }
+
+  /* ============== PRINCIPLES (3 cards stack) ============== */
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    margin-top: 28px;
+  }
+  .principle {
+    border-top: 3px solid var(--red);
+    padding: 24px 0 0 0;
+  }
+  .principle-num {
+    font-family: var(--sans);
+    font-size: clamp(56px, 5vw, 84px);
+    font-weight: 800;
+    line-height: 0.9;
+    color: var(--red);
+    margin-bottom: 14px;
+  }
+  .principle h4 {
+    font-family: var(--sans);
+    font-size: 22px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .principle p {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--grey-70);
+    margin-bottom: 12px;
+    max-width: none;
+  }
+  .principle p strong { color: var(--white); }
+  .principle .robbie-ref {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--grey-50);
+    border-left: 2px solid rgba(255,255,255,0.1);
+    padding-left: 12px;
+    margin-top: 14px;
+  }
+
+  /* ============== TWO-PILLAR (Destinace + Jeviste) ============== */
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-top: 32px;
+    border-top: 1px solid var(--red);
+  }
+  .pillar {
+    padding: 32px 36px 32px 0;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+  .pillar:last-child { border-right: none; padding-right: 0; padding-left: 36px; }
+  .pillar-num {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+  .pillar h3 {
+    font-family: var(--sans);
+    font-size: 30px;
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 1.05;
+    margin-bottom: 18px;
+    color: var(--white);
+  }
+  .pillar p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--grey-70);
+    margin-bottom: 12px;
+    max-width: none;
+  }
+  .pillar p strong { color: var(--white); }
+  .pillar-tagline {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    color: var(--white);
+    margin-top: 18px;
+    line-height: 1.4;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .pillars-bottom {
+    margin-top: 24px;
+    padding: 20px 26px;
+    background: rgba(238,42,92,0.08);
+    border-left: 3px solid var(--red);
+  }
+  .pillars-bottom strong {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .pillars-bottom p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    color: var(--white);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  /* ============== AUDIENCES (4 columns) ============== */
+  .audiences {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    margin-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+  .audience {
+    padding: 22px 16px 22px 0;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .audience:last-child { border-right: none; padding-right: 0; }
+  .audience:not(:first-child) { padding-left: 16px; }
+  .audience-tag {
+    font-family: var(--sans);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--grey-50);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .audience h4 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .audience p {
+    font-size: 12px;
+    color: var(--grey-70);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    max-width: none;
+  }
+  .audience p strong { color: var(--white); display: block; margin-bottom: 3px; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); }
+
+  /* ============== JOURNEY (timeline) ============== */
+  .journey {
+    margin-top: 32px;
+    position: relative;
+  }
+  .journey-track {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0;
+    position: relative;
+  }
+  .journey-track::before {
+    content: '';
+    position: absolute;
+    top: 22px;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--red) 75%, rgba(238,42,92,0.3) 100%);
+    z-index: 0;
+  }
+  .journey-step {
+    position: relative;
+    padding: 0 16px 0 0;
+    z-index: 1;
+  }
+  .journey-dot {
+    width: 18px; height: 18px;
+    background: var(--red);
+    border-radius: 50%;
+    margin: 14px 0 18px;
+    border: 4px solid var(--black);
+    box-sizing: content-box;
+  }
+  .journey-step-num {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  .journey-step h4 {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+  .journey-step p {
+    font-size: 13px;
+    color: var(--grey-70);
+    line-height: 1.5;
+    margin: 0;
+    max-width: none;
+  }
+  .journey-phase {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .journey-phase > div h5 {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .journey-phase > div p {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--white);
+    line-height: 1.5;
+    margin: 0;
+    max-width: none;
+  }
+
+  /* ============== MATRIX (stay / develop) ============== */
+  .matrix {
+    margin-top: 28px;
+    border-top: 1px solid var(--red);
+  }
+  .matrix-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    align-items: stretch;
+  }
+  .matrix-head {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 16px 20px 16px 0;
+    color: var(--red);
+    display: flex; align-items: center;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .matrix-stays, .matrix-grows {
+    padding: 16px 20px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--grey-70);
+  }
+  .matrix-stays { border-right: 1px solid rgba(255,255,255,0.08); }
+  .matrix-grows { color: var(--white); }
+  .matrix-grows strong { color: var(--red); }
+  .matrix-cols {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    margin-top: 0;
+  }
+  .matrix-cols > div {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey-50);
+    padding: 0 20px 12px 0;
+  }
+  .matrix-cols > div:nth-child(2),
+  .matrix-cols > div:nth-child(3) { padding-left: 20px; }
+
+  /* ============== OPEN QUESTIONS ============== */
+  .questions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 32px;
+  }
+  .question {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 22px 26px;
+    position: relative;
+  }
+  .question-num {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .question h4 {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .question p {
+    font-size: 13.5px;
+    color: var(--grey-70);
+    line-height: 1.55;
+    margin: 0;
+    max-width: none;
+  }
+  .question p strong { color: var(--white); }
+
+  /* ============== BRIEF G4G LIST ============== */
+  .brief-list {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 64px;
+  }
+  .brief-block h4 {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(238,42,92,0.3);
+  }
+  .brief-block ul {
+    list-style: none;
+    padding: 0;
+  }
+  .brief-block ul li {
+    font-size: 14px;
+    color: var(--grey-70);
+    padding: 6px 0;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .brief-block ul li:last-child { border-bottom: none; }
+  .brief-block ul li strong { color: var(--white); }
+
+  /* ============== WATCH OUTS ============== */
+  .watchouts {
+    margin-top: 28px;
+    display: grid;
+    gap: 14px;
+  }
+  .watchout {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 18px;
+    align-items: start;
+    padding: 16px 20px;
+    border-left: 3px solid var(--red);
+    background: rgba(255,255,255,0.02);
+  }
+  .watchout-num {
+    font-family: var(--sans);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--red);
+    line-height: 1;
+  }
+  .watchout-body h4 {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .watchout-body p {
+    font-size: 14px;
+    color: var(--grey-70);
+    line-height: 1.5;
+    margin: 0;
+    max-width: none;
+  }
+
+  /* ============== NEXT STEPS ============== */
+  .nextsteps {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid var(--red);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .nextstep {
+    padding: 24px 28px 24px 0;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .nextstep:last-child { border-right: none; }
+  .nextstep:not(:first-child) { padding-left: 28px; }
+  .nextstep .ns-when {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+  .nextstep h4 {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .nextstep p {
+    font-size: 14px;
+    color: var(--grey-70);
+    line-height: 1.5;
+    margin: 0 0 8px;
+    max-width: none;
+  }
+  .nextstep p strong { color: var(--white); }
+
+  /* ============== APPENDIX / LINKS ============== */
+  .appendix {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .appendix-link {
+    display: block;
+    padding: 22px 26px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    text-decoration: none;
+    color: var(--white);
+    transition: all 0.2s;
+  }
+  .appendix-link:hover {
+    border-color: var(--red);
+    background: rgba(238,42,92,0.08);
+  }
+  .appendix-link .al-type {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+  .appendix-link h4 {
+    font-family: var(--sans);
+    font-size: 17px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+  .appendix-link p {
+    font-size: 13px;
+    color: var(--grey-70);
+    line-height: 1.4;
+    margin: 0 0 10px;
+    max-width: none;
+  }
+  .appendix-link .al-action {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--red);
+  }
+
+  /* ============== EDIT MODE ============== */
+  body.edit-mode {
+    /* subtle red glow at top to indicate edit state */
+  }
+  .edit-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 2000;
+    background: var(--red);
+    color: var(--white);
+    padding: 10px 20px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 24px rgba(238,42,92,0.4);
+  }
+  body.edit-mode .edit-bar { display: flex; }
+  body.edit-mode .nav { top: 42px; }
+  body.edit-mode .key-hint { display: none; }
+  .edit-bar-status {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .edit-bar-status .dot {
+    width: 8px; height: 8px;
+    background: var(--white);
+    border-radius: 50%;
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .edit-bar-actions {
+    display: flex; gap: 6px;
+  }
+  .edit-bar button {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: var(--white);
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .edit-bar button:hover {
+    background: rgba(0,0,0,0.4);
+    border-color: var(--white);
+  }
+  .edit-bar button.primary {
+    background: var(--white);
+    color: var(--red);
+    border-color: var(--white);
+  }
+  .edit-bar button.primary:hover {
+    background: var(--black);
+    color: var(--white);
+    border-color: var(--black);
+  }
+  .edit-bar kbd {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 1px 6px;
+    margin: 0 2px;
+    font-family: inherit;
+    font-size: 10px;
+  }
+
+  /* Editable elements become highlighted in edit mode */
+  body.edit-mode [contenteditable="true"] {
+    outline: 1px dashed rgba(238,42,92,0.4);
+    outline-offset: 3px;
+    transition: outline-color 0.15s;
+    cursor: text;
+  }
+  body.edit-mode [contenteditable="true"]:hover {
+    outline-color: rgba(238,42,92,0.8);
+  }
+  body.edit-mode [contenteditable="true"]:focus {
+    outline: 2px solid var(--red);
+    outline-offset: 3px;
+    background: rgba(238,42,92,0.04);
+  }
+
+  /* Toast for export feedback */
+  .edit-toast {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    z-index: 2001;
+    background: var(--black);
+    color: var(--white);
+    border: 1px solid var(--red);
+    padding: 14px 24px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+  .edit-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .edit-toast .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 10px;
+    vertical-align: middle;
+    background: var(--red);
+  }
+
+  /* ============== UTILITY ============== */
+  .label {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 14px;
+    display: inline-block;
+  }
+
+  @media (max-width: 900px) {
+    .slide { padding: 90px 28px 60px; }
+    .slide-tag, .slide-num { left: 28px; right: 28px; }
+    .toc-grid, .exec-grid, .vs-grid, .passages, .two-col, .manifesto-wrap, .robbie-intro,
+    .principles, .pillars, .audiences, .questions, .brief-list, .nextsteps, .appendix,
+    .journey-track, .journey-phase {
+      grid-template-columns: 1fr; gap: 32px;
+    }
+    .stats-row { grid-template-columns: 1fr; }
+    .matrix-row, .matrix-cols { grid-template-columns: 1fr; }
+    .matrix-head { border-right: none; padding-bottom: 4px; }
+    .matrix-stays { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============== EDIT MODE BAR ============== -->
+<div class="edit-bar" id="editBar">
+  <div class="edit-bar-status">
+    <span class="dot"></span>
+    <span>EDIT MODE</span>
+    <span id="editStatus" style="opacity:0.8;font-weight:400;letter-spacing:0.08em;">— klikni do textu pro úpravu</span>
+  </div>
+  <div class="edit-bar-actions">
+    <button onclick="exportDeck()" class="primary">↓ Export HTML</button>
+    <button onclick="resetEdits()" title="Vrátit deck do původního stavu (smaže všechny změny)">Reset</button>
+    <button onclick="toggleEditMode()" title="Vypnout edit mode (Esc)">Hotovo</button>
+  </div>
+</div>
+
+<div class="edit-toast" id="editToast"><span class="dot"></span><span id="toastText">Uloženo</span></div>
+
+<!-- ============== NAV ============== -->
+<nav class="nav">
+  <div class="nav-brand">HC SPARTA &nbsp;/&nbsp; KOMUNIKAČNÍ KONCEPT 26/27</div>
+  <div class="nav-progress"><span class="current" id="curNum">01</span> / <span id="totNum">17</span></div>
+  <button class="nav-toggle" onclick="toggleOverview()">PŘEHLED</button>
+</nav>
+
+<div class="overview" id="overview">
+  <div class="overview-title">Obsah</div>
+  <div class="overview-grid" id="overviewGrid"></div>
+</div>
+
+<!-- ============== SLIDE 1: COVER ============== -->
+<section class="slide cover" data-section="">
+  <div class="cover-pattern"></div>
+  <div class="cover-districts">
+    <span>HOLEŠOVICE</span>
+    <span>VRŠOVICE</span>
+    <span>KARLÍN</span>
+    <span>ŽIŽKOV</span>
+    <span>LETNÁ</span>
+  </div>
+  <div class="cover-content">
+    <div class="cover-eyebrow">Sezóna 26/27 · pracovní návrh</div>
+    <h1 class="cover-title">KOMUNIKAČNÍ<br>KONCEPT<br><span class="accent">HC SPARTA</span></h1>
+    <p class="cover-sub">Návrh komunikačního konceptu pro příští sezónu.</p>
+  </div>
+  <div class="slide-num"><strong>01</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 2: SOURCES OVERVIEW ============== -->
+<section class="slide" data-section="">
+  <div class="slide-tag">Zdroje</div>
+  <h2>Zdrojové dokumenty<em>.</em></h2>
+
+  <p style="font-size:15px;color:var(--grey-70);max-width:880px;margin-bottom:8px;">Na čem stavíme. Všechny podklady přístupné na Drive.</p>
+
+  <div class="appendix">
+    <a class="appendix-link" href="https://docs.google.com/presentation/d/1E7IqyLjq9Rj54n8R4oDezdn1VCrnGA2N/edit?usp=sharing&amp;ouid=116363828115443392436&amp;rtpof=true&amp;sd=true" target="_blank">
+      <div class="al-type">Brand Workshop</div>
+      <h4>Brand Workshop HC Sparta Praha</h4>
+      <p>16. 2. 2026 — archetyp, hodnoty, brand key, sezónní zadání 26/27 (str. 35).</p>
+      <div class="al-action">OTEVŘÍT NA DRIVE  →</div>
+    </a>
+    <a class="appendix-link" href="https://drive.google.com/file/d/1RNRXxk5u0O42irVb5TQ4hbuQN7oyFNuR/view?usp=sharing" target="_blank">
+      <div class="al-type">Strategický koncept 25/26</div>
+      <h4>Praha miluje hokej 2.0</h4>
+      <p>Strategie sezóny 25/26 — cílovky, kanály, cesta nového návštěvníka, brief G4G (str. 30).</p>
+      <div class="al-action">OTEVŘÍT NA DRIVE  →</div>
+    </a>
+    <a class="appendix-link" href="https://drive.google.com/file/d/1rJOpD3IIGxMiDSdcQzIVVACwgRZ2uk8s/view?usp=sharing" target="_blank">
+      <div class="al-type">Vizuální systém</div>
+      <h4>Logomanuál Praha ♥ Hokej</h4>
+      <p>Verze 2.01 — strategický posun (str. 3), manifesto (str. 4), lockup, pattern, srdce.</p>
+      <div class="al-action">OTEVŘÍT NA DRIVE  →</div>
+    </a>
+    <a class="appendix-link" href="https://docs.google.com/document/d/1Ub6iMIafhKMGniFq8dr7a9bjNyDrCW6Z/edit?usp=sharing&ouid=116363828115443392436&rtpof=true&sd=true" target="_blank">
+      <div class="al-type">Referenční materiál</div>
+      <h4>Robbie Williams — přepisy</h4>
+      <p>Plné přepisy obou videí (EN + CZ). Video 1: King of Entertainment. Video 2: Future of Entertainment.</p>
+      <div class="al-action">OTEVŘÍT NA DRIVE  →</div>
+    </a>
+    <a class="appendix-link" href="https://drive.google.com/file/d/1aff-zBn834EKP8y2U6VMr0-1V7LUy94h/view?usp=sharing" target="_blank">
+      <div class="al-type">Záznam show</div>
+      <h4>Gameday show HC Sparta</h4>
+      <p>Celý záznam gameday show v O2 aréně — referenční materiál pro práci na dramaturgii sezóny 26/27.</p>
+      <div class="al-action">OTEVŘÍT  →</div>
+    </a>
+  </div>
+  <div class="slide-num"><strong>02</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 5: BRAND ESSENCE ============== -->
+<section class="slide" data-section="B">
+  <div class="slide-tag">B &nbsp;/&nbsp; Co máme</div>
+  <h2>Brand essence</h2>
+
+  <div class="manifesto-wrap">
+    <div>
+      <h3>Citace — workshop 2/2026, str. 30</h3>
+      <div class="citation">
+        <p><strong>Píšeme historii hokeje a definujeme budoucnost sportovního zážitku.</strong></p>
+        <p>Jsme nedílnou součástí české hokejové tradice již od zrodu hokeje v Čechách.</p>
+        <p>Na každém utkání doručujeme divákům nejmodernější hokejový zážitek, který neustále posouváme dál.</p>
+        <p>Narozdíl od jiných forem zábavy tvoříme unikátní spojení hokeje se zábavou v jeden emocemi nabitý celek.</p>
+        <cite>Brand Workshop HC Sparta — <a href="https://docs.google.com/presentation/d/1E7IqyLjq9Rj54n8R4oDezdn1VCrnGA2N/edit?usp=sharing&amp;ouid=116363828115443392436&amp;rtpof=true&amp;sd=true" target="_blank">otevřít</a></cite>
+      </div>
+    </div>
+    <div class="manifesto-side">
+      <h3>Co se nemění / co se rozvíjí</h3>
+      <p><strong>Nemění se:</strong> tradice, pozice, ambice posouvat zážitek.</p>
+      <p><strong>Rozvíjí se „doručujeme":</strong> zážitek nevzniká sám, dokončují ho lidé v hale.</p>
+      <p><strong>Rozvíjí se „emocemi nabitý celek":</strong> emoci tvoří hlas, přítomnost, rozhodnutí přijít.</p>
+      <p><strong>Rozvíjí se „budoucnost zážitku":</strong> v době AI je živý, sdílený, lidský zážitek diferenciátor.</p>
+    </div>
+  </div>
+  <div class="slide-num"><strong>03</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 6: STRATEGIC SHIFT (LOGOMANUAL) ============== -->
+<section class="slide" data-section="B">
+  <div class="slide-tag">B &nbsp;/&nbsp; Co máme</div>
+  <h2>Strategický posun z logomanuálu</h2>
+
+  <div class="two-col">
+    <div>
+      <h3>Citace — logomanuál, str. 3</h3>
+      <div class="citation">
+        <p>Navazujeme na kampaň ze sezóny 22/23. <strong>Hokej v Praze je Sparta.</strong> Propojujeme Prahu a HC Sparta. Jsme Pražáci a jsme na to hrdí.</p>
+        <p>Sparta není „jen hokejový klub", je to <strong>fenomén, téma rozhovoru i místo trávení volného času.</strong></p>
+        <p>Budujeme emoce. Současně dáváme (více než v minulosti) <strong>příležitost fanouškům být součástí těchto emocí.</strong></p>
+        <p>Z klubu pro fanoušky HC Sparta se posouváme do roviny, kdy <strong>oslovujeme všechny žijící v Praze a okolí, co mají pozitivní vztah k hokeji.</strong></p>
+        <cite>Logomanuál — <a href="https://drive.google.com/file/d/1rJOpD3IIGxMiDSdcQzIVVACwgRZ2uk8s/view?usp=sharing" target="_blank">otevřít</a></cite>
+      </div>
+    </div>
+    <div>
+      <h3>Tři důsledky</h3>
+      <p><strong>1. Cílovka je Praha + okolí, ne jen jádro.</strong><br>Posun byl deklarován. 26/27 ho dotahuje do obsahu.</p>
+      <p><strong>2. „Příležitost být součástí emocí."</strong><br>Slib v logomanuálu. 25/26 ho plně nepřevedlo.</p>
+      <p><strong>3. Sparta = lifestyle, ne jen sport.</strong><br>Konkurence: kino, koncert, streaming, restaurace — ne jiné kluby.</p>
+    </div>
+  </div>
+  <div class="slide-num"><strong>04</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 7: MANIFESTO ============== -->
+<section class="slide" data-section="B">
+  <div class="slide-tag">B &nbsp;/&nbsp; Co máme</div>
+  <h2>Manifesto HC Sparta</h2>
+
+  <div class="manifesto-wrap">
+    <div class="manifesto-text">
+      <p>Tady žijem. Tady se bavíme.<br>Kde jinde než v&nbsp;Praze!</p>
+      <p>Jenom tady máme to, o&nbsp;čem ostatní jen sní. Nezáleží, jestli jsme z&nbsp;Vinohrad, Žižkova, z&nbsp;Jižáku nebo Smíchova. Jsme všichni Praha a&nbsp;v&nbsp;O2 Aréně chceme jenom vítězství.</p>
+      <p>Jsme bojovníci, co neuznávaj' prohru. Hokej je naše hra, naše teritorium. A&nbsp;to si chráníme.</p>
+      <p>Jsme sparťanský bojovníci, a&nbsp;proto se umíme královsky bavit. <strong>Každý zápas je show, kde vládneme, zpíváme a&nbsp;fandíme do poslední sekundy.</strong></p>
+      <p>Praha a&nbsp;hokej to je naše energie. A&nbsp;hokej v&nbsp;Praze — to je Sparta.</p>
+      <p>Jsme Praha, jsme tým, jsme síla, kterou chceš zažít. Ať bije naše srdce pro Spartu navždy! Povstaňme, bojujme, bavme se!</p>
+      <div class="signoff">PRAHA &nbsp;<span>♥</span>&nbsp; HOKEJ &nbsp;<span>♥</span>&nbsp; SPARTA</div>
+    </div>
+    <div class="manifesto-side">
+      <h3>Jak to čteme pro 26/27</h3>
+      <p><strong>Nejen z Prahy.</strong><br>Z Vinohrad, Žižkova, Jižáku, Smíchova — ale taky z Tábora, z vesnice. Je jedno odkud jsme. Odmala jsme hráli na betonových placcích s molitanovými betony a fandili Spartě.</p>
+      <p><strong>Bojujeme = dáváme do toho emoce.</strong><br>Ne boj proti někomu. Boj o zážitek, o show, o sebe navzájem. Obětujeme se, žijeme to. <em>Ať se děje cokoliv, jsme spolu.</em></p>
+      <p><strong>Síla, kterou chceš zažít.</strong><br>Jsme lidi odkudkoliv, kteří milují hokej, show, zážitek a Spartu. A my jim to dáváme.</p>
+      <p style="margin-top:24px;font-size:13px;color:var(--grey-50);">Logomanuál, str. 4 — <a href="https://drive.google.com/file/d/1rJOpD3IIGxMiDSdcQzIVVACwgRZ2uk8s/view?usp=sharing" target="_blank" style="color:var(--red);text-decoration:none;">otevřít</a></p>
+    </div>
+  </div>
+  <div class="slide-num"><strong>05</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 8: VISUAL SYSTEM ============== -->
+<section class="slide" data-section="B">
+  <div class="slide-tag">B &nbsp;/&nbsp; Co máme</div>
+  <h2>Vizuální systém Praha ♥ Hokej</h2>
+
+  <div class="vs-grid">
+    <div class="vs-card">
+      <div class="vs-visual">
+        <div class="vs-lockup">PRAHA <span class="heart">♥</span> HOKEJ</div>
+      </div>
+      <div class="vs-label">Lockup — pevný</div>
+      <h4>Logo</h4>
+      <p>Praha ♥ Hokej. Definovaná typografie (HCS Headline), kerning, barva. Nezasahuje se.</p>
+    </div>
+    <div class="vs-card">
+      <div class="vs-visual">
+        <div class="vs-heart-only">♥</div>
+      </div>
+      <div class="vs-label">Brand element</div>
+      <h4>Srdce</h4>
+      <p>Samostatný prvek. Merch, animace, digitál, 3D v aréně. <strong>Podvyužité.</strong></p>
+    </div>
+    <div class="vs-card">
+      <div class="vs-visual">
+        <div class="vs-pattern"></div>
+      </div>
+      <div class="vs-label">Identifier</div>
+      <h4>Pattern čtvrtí</h4>
+      <p>Holešovice, Žižkov, Karlín, Letná… V 25/26 v pozadí, v 26/27 do popředí.</p>
+    </div>
+  </div>
+
+  <div class="lockup-variants">
+    <h4>Rozšířené lockupy — logomanuál str. 9–10</h4>
+    <div class="lockup-list">
+      <span>PRAHA <span class="heart">♥</span> HOKEJ <small>základní</small></span>
+      <span>PRAHA <span class="heart">♥</span> SHOWTIME</span>
+      <span>PRAHA <span class="heart">♥</span> ZÁBAVU</span>
+      <span>PRAHA <span class="heart">♥</span> VÍTĚZSTVÍ</span>
+      <span>PRAHA <span class="heart">♥</span> FANDĚNÍ</span>
+      <span>SPARTA <span class="heart">♥</span> ŽIVOT <small>CSR</small></span>
+    </div>
+  </div>
+  <div class="slide-num"><strong>06</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE: REFERENCE ROBBIE ============== -->
+<section class="slide" data-section="C">
+  <div class="slide-tag">C &nbsp;/&nbsp; Reference</div>
+  <h2>Entertainment <em>is about to feel something.</em></h2>
+
+  <div class="robbie-intro">
+    <div>
+      <p class="robbie-quote-big">Život je drsný. Svět se zbláznil. Potřebujeme místo, kde se sejdeme, sdílíme jeden zážitek a žijeme život. Tohle je to místo.</p>
+      <div class="robbie-attribution">— Robbie Williams, koncert</div>
+    </div>
+    <div>
+      <h3>Z čeho vycházíme</h3>
+      <p>Zábava není obsah, co se sleduje. <strong>Zábava je pocit, ke kterému se musíš dostat fyzicky a společně.</strong></p>
+      <p>V době online světa a sociálních sítí se ten pocit ztrácí. Lidé sledují, ale neprožívají. Konzumují obsah, ale nesetkávají se.</p>
+      <p>Sparta nabízí přesný opak: <strong>tisíce lidí v jednu chvíli, ve stejném prostoru, prožívají něco, co se nedá nasdílet.</strong></p>
+    </div>
+  </div>
+
+  <a class="transcript-link" href="https://docs.google.com/document/d/1Ub6iMIafhKMGniFq8dr7a9bjNyDrCW6Z/edit?usp=sharing&ouid=116363828115443392436&rtpof=true&sd=true" target="_blank">
+    <strong>Reference Robbie Williams — plné přepisy obou videí (EN + CZ)</strong>
+    <span>OTEVŘÍT  →</span>
+  </a>
+  <div class="slide-num"><strong>07</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 10: VIDEO 1 PASSAGES ============== -->
+<section class="slide" data-section="C">
+  <div class="slide-tag">C &nbsp;/&nbsp; Reference · Video 1</div>
+  <h2>Pasáže z Videa 1</h2>
+
+  <div class="passages">
+    <div class="passage">
+      <div class="passage-num">01</div>
+      <p class="passage-en">„Life is tough. The world's gone mad. We need a place to come together to have a shared experience and elevate our minds. This is the place!"</p>
+      <p class="passage-cz">Život je drsnej. Svět se zbláznil. Potřebujeme místo, kde se sejdeme, sdílíme jeden zážitek a&nbsp;pozvedneme se. <em>Tohle je to místo!</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>O2 arena = to místo. Místo, kde se sejdeme, sdílíme jeden zážitek a&nbsp;žijeme spolu.</p>
+      </div>
+    </div>
+
+    <div class="passage">
+      <div class="passage-num">02</div>
+      <p class="passage-en">„Here's my problem: I can only do this with your help. This — everything here — only exists if you allow it to exist."</p>
+      <p class="passage-cz">Tady je můj problém: tohle zvládnu jen s&nbsp;vaší pomocí. Tohle všechno — všechno tady — <em>existuje jenom tehdy, když to dovolíte.</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Show není naše. Je společná. Hráči ji hrají, fanoušci ji dovolí existovat.</p>
+      </div>
+    </div>
+
+    <div class="passage">
+      <div class="passage-num">03</div>
+      <p class="passage-en">„You are the show. We are the show."</p>
+      <p class="passage-cz">Vy jste ta show. <em>My jsme ta show.</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Manifesto říká totéž: <em>„každý zápas je show, kde vládneme."</em> Vládneme společně.</p>
+      </div>
+    </div>
+
+    <div class="passage">
+      <div class="passage-num">04</div>
+      <p class="passage-en">„Forget about being cool. Forget about wanting to be cool. And just commit!"</p>
+      <p class="passage-cz">Zapomeňte na to být cool. Zapomeňte na to, že chcete být cool. <em>A&nbsp;prostě se do toho položte!</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Sounáležitost bez diváckého odstupu. Commit, ne pózování.</p>
+      </div>
+    </div>
+  </div>
+
+  <a class="transcript-link" href="https://docs.google.com/document/d/1Ub6iMIafhKMGniFq8dr7a9bjNyDrCW6Z/edit?usp=sharing&ouid=116363828115443392436&rtpof=true&sd=true" target="_blank">
+    <strong>Plný přepis Videa 1 — EN + CZ</strong>
+    <span>OTEVŘÍT  →</span>
+  </a>
+  <div class="slide-num"><strong>08</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 9: VIDEO 2 PASSAGES ============== -->
+<section class="slide" data-section="C">
+  <div class="slide-tag">C &nbsp;/&nbsp; Reference · Video 2</div>
+  <h2>Pasáže z Videa 2</h2>
+
+  <div class="passages">
+    <div class="passage">
+      <div class="passage-num">01</div>
+      <p class="passage-en">„Let's explore the future of entertainment. What does it look like? How will it transform to meet the needs of people today?"</p>
+      <p class="passage-cz">Pojďme prozkoumat budoucnost zábavy. Jak vypadá? Jak se promění, aby splnila potřeby dnešních lidí?</p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Otázka přesně pro nás. Sparta = pražská entertainment kategorie, ne jen hokejový klub.</p>
+      </div>
+    </div>
+
+    <div class="passage">
+      <div class="passage-num">02</div>
+      <p class="passage-en">„While technology is truly transforming the entertainment industry, the human element remains the human mystery."</p>
+      <p class="passage-cz">A&nbsp;i&nbsp;když technologie skutečně proměňuje zábavní průmysl, <em>lidský prvek zůstává lidskou záhadou.</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Diferenciátor proti TikToku, streamingu, AI obsahu = živý sdílený zážitek mezi lidmi v jednom prostoru.</p>
+      </div>
+    </div>
+
+    <div class="passage">
+      <div class="passage-num">03</div>
+      <p class="passage-en">„Human entertainment enriches our lives, stimulates our imagination, and ensures that entertainment remains a vital, expressive part of the human experience."</p>
+      <p class="passage-cz">Lidská zábava obohacuje naše životy, podněcuje představivost a&nbsp;zajišťuje, že zábava zůstává <em>živou, expresivní součástí lidské zkušenosti.</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Spartu nesleduješ — Spartu zažiješ. Manifesto: „síla, kterou chceš zažít."</p>
+      </div>
+    </div>
+
+    <div class="passage">
+      <div class="passage-num">04</div>
+      <p class="passage-en">„He's not a man. He's a signal. You don't watch Robbie. You tune into him."</p>
+      <p class="passage-cz">Není to chlap. Je to signál. Robbieho nesleduješ. <em>Naladíš si ho.</em></p>
+      <div class="passage-take">
+        <strong>Pro Spartu</strong>
+        <p>Stejné s&nbsp;hokejem. Sparta není kanál, který se konzumuje. Je to frekvence, na kterou se naladíš.</p>
+      </div>
+    </div>
+  </div>
+
+  <a class="transcript-link" href="https://docs.google.com/document/d/1Ub6iMIafhKMGniFq8dr7a9bjNyDrCW6Z/edit?usp=sharing&ouid=116363828115443392436&rtpof=true&sd=true" target="_blank">
+    <strong>Plný přepis Videa 2 — EN + CZ</strong>
+    <span>OTEVŘÍT  →</span>
+  </a>
+  <div class="slide-num"><strong>09</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 10: THREE PRINCIPLES ============== -->
+<section class="slide" data-section="C">
+  <div class="slide-tag">C &nbsp;/&nbsp; Reference</div>
+  <h2>Tři principy<br><em>na čem stavíme.</em></h2>
+
+  <div class="principles">
+    <div class="principle">
+      <div class="principle-num">01</div>
+      <h4>Ryzí zážitek,<br>ne sledování</h4>
+      <p><strong>Hokejová show není obsah ke konzumaci. Je to něco, čeho jsi součástí.</strong></p>
+      <p>V O2 aréně se nedíváš — vnímáš, cítíš, jsi u toho. Show vzniká teprve ve chvíli, kdy ji prožíváš společně s ostatními. Bez tebe je to jen led.</p>
+    </div>
+    <div class="principle">
+      <div class="principle-num">02</div>
+      <h4>Lidský prvek<br>v online světě</h4>
+      <p><strong>V éře sociálních sítí, AI a izolace je živý zážitek a propojení s ostatními vzácnost.</strong></p>
+      <p>Facebook, Instagram, TikTok, Netflix — všechno se konzumuje sám doma. Vždy jsi u toho sám. Sparta je opak: <em>tisíce lidí spolu v jedné chvíli, ve stejném prostoru, prožívají něco, co se nedá nasdílet.</em></p>
+    </div>
+    <div class="principle">
+      <div class="principle-num">03</div>
+      <h4>Ryzí světová zábava<br>pro všechny</h4>
+      <p><strong>Není to jen pro fanoušky.</strong></p>
+      <p>Chodí k nám rodiny s dětmi, mladí, turisti, ženy, partičky, které se chtějí bavit. <em>Nemusíš být cool, buď kdokoliv — s námi nikdy nejsi sám. Ať jsi kdokoliv, žiješ.</em></p>
+    </div>
+  </div>
+  <div class="slide-num"><strong>10</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 11: DESTINACE + JEVISTE ============== -->
+<section class="slide" data-section="D">
+  <div class="slide-tag">D &nbsp;/&nbsp; Koncept 26/27</div>
+  <h2>Sparta = destinace <em>i</em> jeviště</h2>
+
+  <div class="pillars">
+    <div class="pillar">
+      <div class="pillar-num">Vrstva 1</div>
+      <h3>Destinace</h3>
+      <p><strong>Sparta je místo, kde zažiješ spojení, komunitu, emoce, zábavu.</strong></p>
+      <p>Diferenciace: ne proti jiným hokejovým klubům, ale proti <strong>jiným zážitkovým možnostem v Praze</strong> — fotbal, kino, koncerty, restaurace, streaming doma.</p>
+      <p class="pillar-tagline">„Tady žijem. Tady se bavíme. Kde jinde než v&nbsp;Praze!"</p>
+    </div>
+    <div class="pillar">
+      <div class="pillar-num">Vrstva 2</div>
+      <h3>Jeviště</h3>
+      <p><strong>Show vzniká teprve s lidmi v hale.</strong> Bez nich je to jen led.</p>
+      <p>Rozhodnutí přijít znamená touhu zažít něco opravdového — emoce, hokej, show, spojení s ostatními. <em>Ať jsi kdokoliv, dokážeš to s námi prožít.</em></p>
+      <p class="pillar-tagline">„Vy jste ta show. My jsme ta show."</p>
+    </div>
+  </div>
+
+  <div class="pillars-bottom">
+    <strong>Klíčový posun</strong>
+    <p>Logomanuál říká: <em>„dáváme příležitost fanouškům být součástí těchto emocí."</em> 26/27 ten slib naplno dotahuje do komunikace.</p>
+  </div>
+  <div class="slide-num"><strong>11</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 12: AUDIENCES 26/27 ============== -->
+<section class="slide" data-section="D">
+  <div class="slide-tag">D &nbsp;/&nbsp; Koncept 26/27</div>
+  <h2>Cílovky 26/27</h2>
+
+  <p style="font-size:15px;color:var(--grey-70);max-width:880px;margin-bottom:18px;">Rozdělení z 25/26 zůstává, nově komunikujeme i na turisty (vždy tu byli). Mění se to, <strong>co jim říkáme</strong>.</p>
+
+  <div class="audiences">
+    <div class="audience">
+      <div class="audience-tag">Stávající · jádro</div>
+      <h4>Fanoušci HCS</h4>
+      <p><strong>Kdo</strong>Lidé na našich kanálech, v databázích.</p>
+      <p><strong>Úkol</strong>Zvýšit frekvenci.</p>
+      <p><strong>Pro 26/27</strong>„Bez tebe to není ono." Připomenutí, že show dělají oni.</p>
+    </div>
+    <div class="audience">
+      <div class="audience-tag">Stávající · široká</div>
+      <h4>Milovníci hokeje</h4>
+      <p><strong>Kdo</strong>Lookalike publika v Praze a Stř. Čechách.</p>
+      <p><strong>Úkol</strong>Zvýšit frekvenci.</p>
+      <p><strong>Pro 26/27</strong>Emoce a atmosféra plné haly. Hokej + show + sounáležitost.</p>
+    </div>
+    <div class="audience">
+      <div class="audience-tag">Noví · široký záběr</div>
+      <h4>Pražáci 15+</h4>
+      <p><strong>Kdo</strong>Všichni v Praze a Stř. Čechách, 15+.</p>
+      <p><strong>Úkol</strong>První návštěva.</p>
+      <p><strong>Pro 26/27</strong>Něco, co se nedá zažít doma. Proti pasivní zábavě.</p>
+    </div>
+    <div class="audience">
+      <div class="audience-tag">Noví · zaostřeno</div>
+      <h4>Rodiny &amp; mladí</h4>
+      <p><strong>Kdo</strong>Rodiny s dětmi 6–14 / mladí 15–25, Praha.</p>
+      <p><strong>Úkol</strong>První návštěva.</p>
+      <p><strong>Pro 26/27</strong>FOMO + commit. „Zažít něco nového, prostě se do toho položit."</p>
+    </div>
+    <div class="audience">
+      <div class="audience-tag">Noví · z venku</div>
+      <h4>Turisté</h4>
+      <p><strong>Kdo</strong>Návštěvníci Prahy, kteří hledají autentický pražský zážitek.</p>
+      <p><strong>Úkol</strong>Návštěva v rámci pobytu.</p>
+      <p><strong>Pro 26/27</strong>Pražská show světové úrovně. Něco, co si odvezou jako zážitek.</p>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:var(--grey-50);margin-top:20px;">Zdroj definice cílovek: <a href="https://drive.google.com/file/d/1RNRXxk5u0O42irVb5TQ4hbuQN7oyFNuR/view?usp=sharing" target="_blank" style="color:var(--red);text-decoration:none;">Praha miluje hokej 2.0 (25/26)</a></p>
+  <div class="slide-num"><strong>12</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 13: JOURNEY 2.0 ============== -->
+<section class="slide" data-section="D">
+  <div class="slide-tag">D &nbsp;/&nbsp; Koncept 26/27</div>
+  <h2>Cesta ke špičkovému hokeji,<br>světové show, ryzímu zážitku</h2>
+
+  <p style="font-size:15px;color:var(--grey-70);max-width:880px;margin-bottom:8px;">Čtyři fáze. Komunikace mimo arénu vede k prožitku v aréně, prožitek vede k loajalitě a frekvenci.</p>
+
+  <div class="journey">
+    <div class="journey-track">
+      <div class="journey-step">
+        <div class="journey-dot"></div>
+        <div class="journey-step-num">01 · Mimo arénu</div>
+        <h4>Zaujmout</h4>
+        <p>Špičkový hokej + světová show + O2 arena. Nabídka ryzího zážitku, který se nedá zažít doma.</p>
+      </div>
+      <div class="journey-step">
+        <div class="journey-dot"></div>
+        <div class="journey-step-num">02 · Před zápasem</div>
+        <h4>Pozvat</h4>
+        <p>„Pojď to zažít. S námi nikdy nejsi sám." Pozvánka, ne reklama.</p>
+      </div>
+      <div class="journey-step">
+        <div class="journey-dot"></div>
+        <div class="journey-step-num">03 · V aréně</div>
+        <h4>Prožít</h4>
+        <p>Hokej + show + spojení s ostatními. Dramaturgie, která reaguje na publikum.</p>
+      </div>
+      <div class="journey-step">
+        <div class="journey-dot"></div>
+        <div class="journey-step-num">04 · Po zápase</div>
+        <h4>Vrátit se</h4>
+        <p>Připomenutí konkrétního momentu — „byl jsi u toho." Ne generická pozvánka na další zápas.</p>
+      </div>
+    </div>
+
+    <div class="journey-phase">
+      <div>
+        <h5>Akvizice · Mimo arénu</h5>
+        <p>„Nalákal mě ryzí zážitek, který chci prožít."</p>
+      </div>
+      <div>
+        <h5>Loajalita · V aréně</h5>
+        <p>„Zažil jsem hlubší emoce za hranicemi zábavy."</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:var(--grey-50);margin-top:18px;">Vychází z modelu v 25/26 decku (str. 26) — <a href="https://drive.google.com/file/d/1RNRXxk5u0O42irVb5TQ4hbuQN7oyFNuR/view?usp=sharing" target="_blank" style="color:var(--red);text-decoration:none;">otevřít</a>. Nová verze přidává explicitní fázi „prožít" jako spojnici mezi akvizicí a loajalitou.</p>
+  <div class="slide-num"><strong>13</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 14: VISUAL SYSTEM FULL ============== -->
+<section class="slide" data-section="D">
+  <div class="slide-tag">D &nbsp;/&nbsp; Koncept 26/27</div>
+  <h2>Vizuální systém naplno</h2>
+
+  <p style="font-size:15px;color:var(--grey-70);max-width:880px;margin-bottom:18px;">Nezavádíme novou grafiku. Posouváme tři roviny, které byly v 25/26 utlumené.</p>
+
+  <div class="principles">
+    <div class="principle">
+      <div class="principle-num">♥</div>
+      <h4>Srdce<br>rozehrát naplno</h4>
+      <p><strong>Z brand prvku do živého motivu.</strong></p>
+      <p>Srdce má potenciál být hrdinou komunikace — v animacích, na merchu, v aréně, v intech. Jak konkrétně ho rozehrát (animace, instalace, vizuální motiv, fyzický objekt) = úkol pro kreativní tým.</p>
+      <p class="robbie-ref">Symbol „příležitosti být součástí emocí" — naplno do popředí.</p>
+    </div>
+    <div class="principle">
+      <div class="principle-num">▦</div>
+      <h4>Pattern čtvrtí<br>do popředí</h4>
+      <p><strong>Z pozadí do hlavního motivu.</strong></p>
+      <p>Holešovice, Žižkov, Karlín, Letná, Vinohrady, Smíchov… Pattern jako hero element, ne wallpaper. Animace, dresy, OOH, intra.</p>
+      <p class="robbie-ref">„Jsme všichni Praha." Identita fanouška se rodí ve čtvrti.</p>
+    </div>
+    <div class="principle">
+      <div class="principle-num">⊹</div>
+      <h4>Jazyk emocí,<br>nejen hokeje</h4>
+      <p><strong>Praha miluje hokej. A Sparta žije.</strong></p>
+      <p>Praha miluje zážitek, fandění, vítězství, hokej. Komunikace vede skrze emoci, ne skrze sport. Sparta žije ve městě, v aréně, ve fanoušcích.</p>
+      <p class="robbie-ref">Z claimu jako loga do claimu jako pocitu.</p>
+    </div>
+  </div>
+  <div class="slide-num"><strong>14</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 15: STAYS / DEVELOPS MATRIX ============== -->
+<section class="slide" data-section="D">
+  <div class="slide-tag">D &nbsp;/&nbsp; Koncept 26/27</div>
+  <h2>Co zůstává <em>/</em> co rozvíjíme</h2>
+
+  <div class="matrix">
+    <div class="matrix-cols">
+      <div>Oblast</div>
+      <div>Zůstává</div>
+      <div>Rozvíjí se</div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-head">Brand</div>
+      <div class="matrix-stays">Brand essence, archetyp HERO–CREATOR, 5 hodnot, manifesto.</div>
+      <div class="matrix-grows">Důraz na <strong>sounáležitost</strong> a <strong>příležitost být součástí emocí</strong> — slib z logomanuálu naplno do komunikace.</div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-head">Komunikace</div>
+      <div class="matrix-stays">Praha ♥ Hokej. Pevný lockup, manifesto, vizuální identita.</div>
+      <div class="matrix-grows">Jazyk emocí: <strong>Praha miluje zážitek, fandění, vítězství, hokej. Sparta žije.</strong></div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-head">Vizuál</div>
+      <div class="matrix-stays">Patina, rastry, fonty, barevnost, layout pravidla.</div>
+      <div class="matrix-grows"><strong>Srdce</strong> rozehrát naplno, <strong>pattern čtvrtí</strong> do popředí, použití v animacích a in-arena.</div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-head">Cílovky</div>
+      <div class="matrix-stays">Stávající fanoušci, milovníci hokeje, Pražáci 15+, rodiny, mladí, turisté.</div>
+      <div class="matrix-grows">Nově komunikujeme i na <strong>turisty</strong> — vždy tu byli, jen jsme na ně necílili. Všem mluvíme jazykem ryzího zážitku, ne sportu.</div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-head">Konkurence</div>
+      <div class="matrix-stays">Hokejové kluby v lize — výsledkově.</div>
+      <div class="matrix-grows">Komunikačně: <strong>fotbal v Praze</strong> a další <strong>zážitková místa</strong> (kino, koncerty, restaurace, streaming doma).</div>
+    </div>
+    <div class="matrix-row">
+      <div class="matrix-head">Cesta návštěvníka</div>
+      <div class="matrix-stays">Akvizice mimo arénu → loajalita v aréně (25/26 model).</div>
+      <div class="matrix-grows">Přidává se explicitní fáze <strong>„prožít"</strong> jako spojnice mezi nimi.</div>
+    </div>
+  </div>
+  <div class="slide-num"><strong>15</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 18: WATCH OUTS ============== -->
+<section class="slide" data-section="D">
+  <div class="slide-tag">D &nbsp;/&nbsp; Koncept 26/27</div>
+  <h2>Pozor na</h2>
+
+  <div class="watchouts">
+    <div class="watchout">
+      <div class="watchout-num">01</div>
+      <div class="watchout-body">
+        <h4>Hipsterizace</h4>
+        <p>Vrstva sounáležitosti a komunitního zážitku může sklouznout do měkkého tónu. Sparta zůstává <strong>tvrdá, hrdá, bojovná</strong> — manifesto: „bojovníci, co vždy chtějí vyhrát."</p>
+      </div>
+    </div>
+    <div class="watchout">
+      <div class="watchout-num">02</div>
+      <div class="watchout-body">
+        <h4>Balanc otevřenosti</h4>
+        <p>Mluvíme ke všem — rodinám, turistům, mladým, Pražákům. Zároveň <strong>jádro fanoušků musí cítit, že je to pořád jejich tým</strong>. Otevřenost neznamená rozředění.</p>
+      </div>
+    </div>
+    <div class="watchout">
+      <div class="watchout-num">03</div>
+      <div class="watchout-body">
+        <h4>Autenticita cílovek</h4>
+        <p>Mladí, rodiny, Pražáci, turisté — každá cílovka má jiný jazyk. <strong>Žádný unifikovaný TOV pro všechny</strong>. Výběr tváří, slovník, hudba — autenticky podle cílovky.</p>
+      </div>
+    </div>
+    <div class="watchout">
+      <div class="watchout-num">04</div>
+      <div class="watchout-body">
+        <h4>Konzistence kampaní</h4>
+        <p>Ticketing kampaně (na stávající fans) a image kampaně (na nové) musí <strong>vizuálně a tonálně sedět vedle sebe</strong>. Žádné dva paralelní vesmíry.</p>
+      </div>
+    </div>
+    <div class="watchout">
+      <div class="watchout-num">05</div>
+      <div class="watchout-body">
+        <h4>Sport jako základ</h4>
+        <p>Komunikujeme ryzí zážitek, ale <strong>hokej zůstává jádrem produktu</strong>. Špičkový sport není dekorace — je důvod, proč zážitek vůbec existuje.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-num"><strong>16</strong> / 17</div>
+</section>
+
+<!-- ============== SLIDE 17: CLOSING ============== -->
+<section class="slide" data-section="">
+  <div class="slide-tag">Závěr</div>
+  <h2>Praha miluje hokej.<br><em>Sparta žije.</em></h2>
+
+  <p class="lead" style="margin-top:18px;max-width:880px;">Tento koncept rozvíjí, co už máme. Rámec pro brief, ne hotová kampaň. Konkrétní claim, key visual a dramaturgie patří kreativnímu týmu.</p>
+
+  <div style="margin-top:48px;padding:32px 36px;background:rgba(238,42,92,0.06);border-left:3px solid var(--red);max-width:880px;">
+    <p style="font-family:var(--serif);font-style:italic;font-size:22px;color:var(--white);line-height:1.4;margin:0;">„Život je drsný. Svět se zbláznil. Potřebujeme místo, kde se sejdeme, sdílíme jeden zážitek a žijeme život. Tohle je to místo."</p>
+    <p style="font-family:var(--sans);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--grey-50);margin:18px 0 0;">— Robbie Williams</p>
+  </div>
+
+  <div class="slide-num"><strong>17</strong> / 17</div>
+</section>
+
+<!-- ============== KEYBOARD NAV ============== -->
+<div class="key-hint">
+  <kbd>↓</kbd> / <kbd>↑</kbd> &nbsp; SLIDES &nbsp; · &nbsp; <kbd>O</kbd> OVERVIEW &nbsp; · &nbsp; <kbd>E</kbd> EDIT MODE &nbsp; · &nbsp; <kbd>HOME</kbd> NA ZAČÁTEK
+</div>
+
+<script>
+  // Update slide counter on scroll
+  const slides = document.querySelectorAll('.slide');
+  const curNum = document.getElementById('curNum');
+  const totNum = document.getElementById('totNum');
+  totNum.textContent = String(slides.length).padStart(2, '0');
+
+  let activeIndex = 0;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && e.intersectionRatio > 0.5) {
+        const idx = Array.from(slides).indexOf(e.target);
+        activeIndex = idx;
+        curNum.textContent = String(idx + 1).padStart(2, '0');
+      }
+    });
+  }, { threshold: [0.5] });
+  slides.forEach(s => obs.observe(s));
+
+  // Build overview
+  const overviewGrid = document.getElementById('overviewGrid');
+  const overviewData = [
+    { num: '01', section: '', name: 'Cover' },
+    { num: '02', section: '', name: 'Zdrojové dokumenty' },
+    { num: '03', section: 'B — Co máme', name: 'Brand essence' },
+    { num: '04', section: 'B — Co máme', name: 'Strategický posun z logomanuálu' },
+    { num: '05', section: 'B — Co máme', name: 'Manifesto HC Sparta' },
+    { num: '06', section: 'B — Co máme', name: 'Vizuální systém Praha ♥ Hokej' },
+    { num: '07', section: 'C — Reference', name: 'Entertainment is to feel something' },
+    { num: '08', section: 'C — Reference', name: 'Pasáže z Videa 1' },
+    { num: '09', section: 'C — Reference', name: 'Pasáže z Videa 2' },
+    { num: '10', section: 'C — Reference', name: 'Tři principy' },
+    { num: '11', section: 'D — Koncept 26/27', name: 'Sparta = destinace + jeviště' },
+    { num: '12', section: 'D — Koncept 26/27', name: 'Cílovky 26/27' },
+    { num: '13', section: 'D — Koncept 26/27', name: 'Cesta ke špičkovému hokeji' },
+    { num: '14', section: 'D — Koncept 26/27', name: 'Vizuální systém naplno' },
+    { num: '15', section: 'D — Koncept 26/27', name: 'Co zůstává / co rozvíjíme' },
+    { num: '16', section: 'D — Koncept 26/27', name: 'Pozor na' },
+    { num: '17', section: '', name: 'Praha miluje hokej. Sparta žije.' },
+  ];
+  overviewData.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'overview-item';
+    div.innerHTML = `
+      <div class="overview-num">${item.num}</div>
+      <div class="overview-section">${item.section}</div>
+      <div class="overview-name">${item.name}</div>
+    `;
+    div.onclick = () => {
+      slides[i].scrollIntoView({ behavior: 'smooth' });
+      toggleOverview();
+    };
+    overviewGrid.appendChild(div);
+  });
+
+  // Toggle overview
+  function toggleOverview() {
+    document.getElementById('overview').classList.toggle('open');
+  }
+
+  // Keyboard nav
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'o' || e.key === 'O') { toggleOverview(); }
+    if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+      e.preventDefault();
+      const next = slides[Math.min(activeIndex + 1, slides.length - 1)];
+      next.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      e.preventDefault();
+      const prev = slides[Math.max(activeIndex - 1, 0)];
+      prev.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'Home') {
+      e.preventDefault();
+      slides[0].scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'Escape') {
+      document.getElementById('overview').classList.remove('open');
+      if (document.body.classList.contains('edit-mode')) {
+        toggleEditMode();
+      }
+    }
+    if ((e.key === 'e' || e.key === 'E') && !isTyping()) {
+      // Avoid triggering edit toggle while typing inside an editable element
+      toggleEditMode();
+    }
+  });
+
+  // Don't trigger E when focused on input or editable text
+  function isTyping() {
+    const el = document.activeElement;
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA';
+  }
+
+  // ============== EDIT MODE ==============
+  const EDIT_STORAGE_KEY = 'sparta-2627-edits-v1';
+
+  // Selector: any text-bearing element we allow editing (skip nav, edit-bar, slide-num, JS-driven UI)
+  const EDITABLE_SELECTOR = [
+    'h1', 'h2', 'h3', 'h4', 'h5',
+    '.slide p', '.slide li', '.slide cite',
+    '.slide-tag',
+    '.passage-en', '.passage-cz',
+    '.cover-eyebrow', '.cover-sub',
+    '.signoff',
+    '.robbie-quote-big', '.robbie-attribution',
+    '.pillar-tagline', '.pillar-num',
+    '.audience-tag',
+    '.journey-step-num',
+    '.matrix-head', '.matrix-stays', '.matrix-grows', '.matrix-cols > div',
+    '.watchout-body p', '.watchout-body h4',
+    '.lockup-list span', '.lockup-variants h4',
+    '.principle h4', '.principle-num',
+    '.al-type', '.al-action',
+    '.appendix-link p',
+    '.exec-bottom strong', '.exec-bottom p',
+    '.principle p', '.principle .robbie-ref',
+    '.passage-take p', '.passage-take strong',
+    '.passage-num',
+    '.vs-label',
+    '.transcript-link strong', '.transcript-link span',
+    '.citation p'
+  ].join(', ');
+
+  // Track element identities for diff persistence
+  function getEditables() {
+    const found = document.querySelectorAll(EDITABLE_SELECTOR);
+    return Array.from(found).filter(el => {
+      // Exclude elements inside nav, edit-bar, edit-toast, overview, key-hint
+      if (el.closest('.nav, .edit-bar, .edit-toast, .overview, .key-hint, script')) return false;
+      // Exclude slide-num (those are auto-managed)
+      if (el.closest('.slide-num')) return false;
+      return true;
+    });
+  }
+
+  // Assign stable IDs to editables for storage (path-based)
+  function assignEditIds() {
+    const editables = getEditables();
+    editables.forEach((el, i) => {
+      if (!el.dataset.editId) {
+        el.dataset.editId = 'e' + i;
+      }
+    });
+    return editables;
+  }
+
+  // Save edits to localStorage
+  function saveEdits() {
+    const data = {};
+    document.querySelectorAll('[data-edit-id]').forEach(el => {
+      data[el.dataset.editId] = el.innerHTML;
+    });
+    try {
+      localStorage.setItem(EDIT_STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.warn('localStorage save failed', e);
+    }
+  }
+
+  // Load edits from localStorage on page load
+  function loadEdits() {
+    try {
+      const raw = localStorage.getItem(EDIT_STORAGE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      assignEditIds();
+      let applied = 0;
+      Object.keys(data).forEach(id => {
+        const el = document.querySelector('[data-edit-id="' + id + '"]');
+        if (el && el.innerHTML !== data[id]) {
+          el.innerHTML = data[id];
+          applied++;
+        }
+      });
+      return applied > 0;
+    } catch (e) {
+      console.warn('localStorage load failed', e);
+      return false;
+    }
+  }
+
+  function toggleEditMode() {
+    const body = document.body;
+    const isOn = body.classList.toggle('edit-mode');
+    if (isOn) {
+      const editables = assignEditIds();
+      editables.forEach(el => {
+        el.setAttribute('contenteditable', 'true');
+        el.spellcheck = false; // less visual noise
+        el.addEventListener('input', onEditableInput);
+        el.addEventListener('blur', saveEdits);
+      });
+      document.getElementById('editStatus').textContent = '— ' + editables.length + ' editovatelných bloků · auto-uložení';
+      showToast('Edit mode zapnut');
+    } else {
+      document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+        el.removeAttribute('contenteditable');
+        el.removeEventListener('input', onEditableInput);
+        el.removeEventListener('blur', saveEdits);
+      });
+      saveEdits();
+      showToast('Edit mode vypnut · změny uloženy lokálně');
+    }
+  }
+
+  let inputDebounce = null;
+  function onEditableInput() {
+    clearTimeout(inputDebounce);
+    inputDebounce = setTimeout(saveEdits, 400);
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('editToast');
+    document.getElementById('toastText').textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function resetEdits() {
+    if (!confirm('Smazat všechny lokální úpravy a vrátit deck do původního stavu? Tato akce je nevratná.')) return;
+    localStorage.removeItem(EDIT_STORAGE_KEY);
+    location.reload();
+  }
+
+  function exportDeck() {
+    // Make sure latest edits are saved first
+    saveEdits();
+
+    // Clone current document
+    const doctype = '<!DOCTYPE html>\n';
+    const html = document.documentElement.cloneNode(true);
+
+    // Strip edit-mode state from exported HTML
+    const body = html.querySelector('body');
+    if (body) body.classList.remove('edit-mode');
+
+    // Remove edit-bar and edit-toast from export (they'll re-render on load if user opens)
+    const bar = html.querySelector('.edit-bar');
+    const toast = html.querySelector('.edit-toast');
+    if (bar) bar.remove();
+    if (toast) toast.remove();
+    // Wait — we want them in the export so the new HTML still has edit capability
+    // So let's NOT remove them. Keep them but they're hidden by default.
+    // Reverting:
+    // Re-clone fresh
+    const html2 = document.documentElement.cloneNode(true);
+    const body2 = html2.querySelector('body');
+    if (body2) body2.classList.remove('edit-mode');
+    // Remove contenteditable attributes — exported HTML should be clean
+    html2.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    // Remove data-edit-id markers — they'll be re-assigned on next edit session
+    html2.querySelectorAll('[data-edit-id]').forEach(el => el.removeAttribute('data-edit-id'));
+
+    const blob = new Blob([doctype + html2.outerHTML], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    a.download = 'sparta-2627-deck-' + date + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('HTML exportován · nahraj na GitHub jako index.html');
+  }
+
+  // On load: apply saved edits if any
+  document.addEventListener('DOMContentLoaded', () => {
+    const hadEdits = loadEdits();
+    if (hadEdits) {
+      // Visual hint that local edits are applied
+      setTimeout(() => showToast('Načteny lokální úpravy · E pro edit'), 600);
+    }
+  });
+</script>
+</body>
+</html>
